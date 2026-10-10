@@ -1,0 +1,8 @@
+.mimosa/
+.playwright-mcp/
+.zcode/
+__pycache__/
+*.zip
+voicehub-logo.png
+.env
+*.log

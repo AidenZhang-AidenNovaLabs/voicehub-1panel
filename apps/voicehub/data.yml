@@ -1,0 +1,32 @@
+name: VoiceHub
+tags:
+  - Tool
+title: "校园广播点歌平台"
+description: "校园广播点歌平台"
+additionalProperties:
+  key: voicehub
+  name: VoiceHub
+  tags:
+    - Tool
+  shortDescZh: "校园广播点歌平台"
+  shortDescEn: "A school radio song request platform"
+  description:
+    en: "A school radio song request platform"
+    es-es: "A school radio song request platform"
+    ja: "A school radio song request platform"
+    ms: "A school radio song request platform"
+    pt-br: "A school radio song request platform"
+    ru: "A school radio song request platform"
+    ko: "A school radio song request platform"
+    zh-Hant: "校園廣播點歌平台"
+    zh: "校园广播点歌平台"
+    tr: "A school radio song request platform"
+  type: website
+  crossVersionUpdate: true
+  limit: 0
+  architectures:
+    - amd64
+    - arm64
+  website: https://github.com/laoshuikaixue/VoiceHub
+  github: https://github.com/laoshuikaixue/VoiceHub
+  document: https://github.com/laoshuikaixue/VoiceHub/blob/main/README.md
