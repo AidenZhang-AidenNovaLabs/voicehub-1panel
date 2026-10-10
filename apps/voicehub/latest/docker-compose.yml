@@ -14,14 +14,14 @@ services:
       PANEL_DB_NAME: "${PANEL_DB_NAME}"
       PANEL_DB_USER: "${PANEL_DB_USER}"
       PANEL_DB_USER_PASSWORD: "${PANEL_DB_USER_PASSWORD}"
-      JWT_SECRET: "${JWT_SECRET}"
     volumes:
       - ./data:/app/.data
       - ./backups:/app/backups
+      - ./config/jwt-secret.cjs:/app/1panel-jwt-secret.cjs:ro
     command:
       - sh
       - "-ec"
-      - "DATABASE_URL=\"$$(node -e 'const e=process.env; for (const k of [\"PANEL_DB_HOST\",\"PANEL_DB_PORT\",\"PANEL_DB_NAME\",\"PANEL_DB_USER\",\"PANEL_DB_USER_PASSWORD\",\"JWT_SECRET\"]) if (!e[k]) throw Error(\"Missing \"+k); if (Buffer.byteLength(e.JWT_SECRET)<32) throw Error(\"JWT_SECRET must be at least 32 bytes\"); if (!/^\\d+$/.test(e.PANEL_DB_PORT) || Number(e.PANEL_DB_PORT)<1 || Number(e.PANEL_DB_PORT)>65535) throw Error(\"Invalid database port\"); const u=new URL(\"postgresql://placeholder\"); u.hostname=e.PANEL_DB_HOST; u.port=e.PANEL_DB_PORT; u.pathname=\"/\"+encodeURIComponent(e.PANEL_DB_NAME); u.username=encodeURIComponent(e.PANEL_DB_USER); u.password=encodeURIComponent(e.PANEL_DB_USER_PASSWORD); u.searchParams.set(\"sslmode\",\"disable\"); process.stdout.write(u.href)')\"\nexport DATABASE_URL\nnode scripts/deploy.js\nexec node .output/server/index.mjs\n"
+      - "JWT_SECRET=\"$$(node 1panel-jwt-secret.cjs)\"\nexport JWT_SECRET\nDATABASE_URL=\"$$(node -e 'const e=process.env; for (const k of [\"PANEL_DB_HOST\",\"PANEL_DB_PORT\",\"PANEL_DB_NAME\",\"PANEL_DB_USER\",\"PANEL_DB_USER_PASSWORD\",\"JWT_SECRET\"]) if (!e[k]) throw Error(\"Missing \"+k); if (Buffer.byteLength(e.JWT_SECRET)<32) throw Error(\"JWT_SECRET must be at least 32 bytes\"); if (!/^\\d+$/.test(e.PANEL_DB_PORT) || Number(e.PANEL_DB_PORT)<1 || Number(e.PANEL_DB_PORT)>65535) throw Error(\"Invalid database port\"); const u=new URL(\"postgresql://placeholder\"); u.hostname=e.PANEL_DB_HOST; u.port=e.PANEL_DB_PORT; u.pathname=\"/\"+encodeURIComponent(e.PANEL_DB_NAME); u.username=encodeURIComponent(e.PANEL_DB_USER); u.password=encodeURIComponent(e.PANEL_DB_USER_PASSWORD); u.searchParams.set(\"sslmode\",\"disable\"); process.stdout.write(u.href)')\"\nexport DATABASE_URL\nnode scripts/deploy.js\nexec node .output/server/index.mjs\n"
     labels:
       createdBy: Apps
     pull_policy: always

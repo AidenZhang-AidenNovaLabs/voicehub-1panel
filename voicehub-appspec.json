@@ -47,7 +47,7 @@
     "User explicitly requests rolling latest: add pull_policy: always after generation; do not add updater services.",
     "Use the official Halo apps/child service form pattern restricted to postgresql. Remove the generator's duplicate top-level PANEL_DB_HOST field; it is already declared in the child selector.",
     "The database is managed by 1Panel, not this Compose. No postgres service or cross-project depends_on.",
-    "Command only encodes DATABASE_URL then runs the official deploy/server sequence. No source modification or host lifecycle scripts.",
+    "Command persists a random JWT secret through config/jwt-secret.cjs, then encodes DATABASE_URL and runs the official deploy/server sequence. Keep the helper alongside generated files; no source modification or host lifecycle scripts.",
     "Application image runs as root; no host ownership hook needed for these two mounts.",
     "Specialized labels use English fallback outside Chinese; common database labels copied from Halo.",
     "Logo captured from the official PNG through Playwright MCP.",
@@ -59,17 +59,16 @@
       "image": "ghcr.io/laoshuikaixue/voicehub:latest",
       "primary": true,
       "ports": [{"host_env": "PANEL_APP_PORT_HTTP", "host_default": 3000, "container": 3000, "label": "Port"}],
-      "volumes": ["./data:/app/.data", "./backups:/app/backups"],
+      "volumes": ["./data:/app/.data", "./backups:/app/backups", "./config/jwt-secret.cjs:/app/1panel-jwt-secret.cjs:ro"],
       "environment": {
         "NODE_ENV": "production",
         "PANEL_DB_HOST": "${PANEL_DB_HOST}",
         "PANEL_DB_PORT": "${PANEL_DB_PORT}",
         "PANEL_DB_NAME": "${PANEL_DB_NAME}",
         "PANEL_DB_USER": "${PANEL_DB_USER}",
-        "PANEL_DB_USER_PASSWORD": "${PANEL_DB_USER_PASSWORD}",
-        "JWT_SECRET": "${JWT_SECRET}"
+        "PANEL_DB_USER_PASSWORD": "${PANEL_DB_USER_PASSWORD}"
       },
-      "command": ["sh", "-ec", "DATABASE_URL=\"$$(node -e 'const e=process.env; for (const k of [\"PANEL_DB_HOST\",\"PANEL_DB_PORT\",\"PANEL_DB_NAME\",\"PANEL_DB_USER\",\"PANEL_DB_USER_PASSWORD\",\"JWT_SECRET\"]) if (!e[k]) throw Error(\"Missing \"+k); if (Buffer.byteLength(e.JWT_SECRET)<32) throw Error(\"JWT_SECRET must be at least 32 bytes\"); if (!/^\\d+$/.test(e.PANEL_DB_PORT) || Number(e.PANEL_DB_PORT)<1 || Number(e.PANEL_DB_PORT)>65535) throw Error(\"Invalid database port\"); const u=new URL(\"postgresql://placeholder\"); u.hostname=e.PANEL_DB_HOST; u.port=e.PANEL_DB_PORT; u.pathname=\"/\"+encodeURIComponent(e.PANEL_DB_NAME); u.username=encodeURIComponent(e.PANEL_DB_USER); u.password=encodeURIComponent(e.PANEL_DB_USER_PASSWORD); u.searchParams.set(\"sslmode\",\"disable\"); process.stdout.write(u.href)')\"\nexport DATABASE_URL\nnode scripts/deploy.js\nexec node .output/server/index.mjs\n"]
+      "command": ["sh", "-ec", "JWT_SECRET=\"$$(node 1panel-jwt-secret.cjs)\"\nexport JWT_SECRET\nDATABASE_URL=\"$$(node -e 'const e=process.env; for (const k of [\"PANEL_DB_HOST\",\"PANEL_DB_PORT\",\"PANEL_DB_NAME\",\"PANEL_DB_USER\",\"PANEL_DB_USER_PASSWORD\",\"JWT_SECRET\"]) if (!e[k]) throw Error(\"Missing \"+k); if (Buffer.byteLength(e.JWT_SECRET)<32) throw Error(\"JWT_SECRET must be at least 32 bytes\"); if (!/^\\d+$/.test(e.PANEL_DB_PORT) || Number(e.PANEL_DB_PORT)<1 || Number(e.PANEL_DB_PORT)>65535) throw Error(\"Invalid database port\"); const u=new URL(\"postgresql://placeholder\"); u.hostname=e.PANEL_DB_HOST; u.port=e.PANEL_DB_PORT; u.pathname=\"/\"+encodeURIComponent(e.PANEL_DB_NAME); u.username=encodeURIComponent(e.PANEL_DB_USER); u.password=encodeURIComponent(e.PANEL_DB_USER_PASSWORD); u.searchParams.set(\"sslmode\",\"disable\"); process.stdout.write(u.href)')\"\nexport DATABASE_URL\nnode scripts/deploy.js\nexec node .output/server/index.mjs\n"]
     }
   ],
   "form_fields": [
@@ -98,10 +97,6 @@
       "default": "voicehub", "envKey": "PANEL_DB_USER_PASSWORD", "labelEn": "Database password", "labelZh": "数据库用户密码",
       "label": {"en": "Database password", "zh": "数据库用户密码", "es-es": "Contraseña de la base de datos", "zh-Hant": "資料庫密碼", "ja": "データベースパスワード", "ko": "데이터베이스 비밀번호", "ms": "Kata laluan pangkalan data", "pt-br": "Senha do banco de dados", "ru": "Пароль базы данных", "tr": "Veritabanı parolası"},
       "random": true, "required": true, "type": "password"
-    },
-    {
-      "default": "", "envKey": "JWT_SECRET", "labelEn": "JWT Secret (32+ random characters)", "labelZh": "JWT 密钥（至少 32 位随机字符）", "required": true, "type": "password",
-      "description": {"en": "Generate your own secret, for example with openssl rand -hex 32. Keep it unchanged during updates.", "zh": "请用 openssl rand -hex 32 生成独立密钥；更新时不要更换。"}
     }
   ]
 }

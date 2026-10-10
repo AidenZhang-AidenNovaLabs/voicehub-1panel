@@ -35,15 +35,15 @@ RHEL / Rocky / AlmaLinux 可安装 `dialog python3 curl`。`whiptail/dialog` 是
 
 1. 先通过 1Panel 安装 PostgreSQL（建议 15）并启动。
 2. 在 1Panel 刷新本地应用，安装 `VoiceHub / latest`，选择 PostgreSQL 服务。
-3. 填写数据库参数和至少 32 位随机 JWT 密钥，可用 `openssl rand -hex 32` 生成。首次登录 `admin / admin123` 后立即修改密码；公网访问使用 HTTPS。
+3. 填写数据库参数；JWT 密钥首次启动时自动生成，无需填写。首次登录 `admin / admin123` 后立即修改密码；公网访问使用 HTTPS。
 
-数据库绑定字段复用 [官方 Halo 模板](https://github.com/1Panel-dev/appstore/blob/dev/apps/halo/2.26.1/data.yml)。插件与后台备份分别保存在 `./data`、`./backups`；数据库由 1Panel 管理。
+数据库绑定字段复用 [官方 Halo 模板](https://github.com/1Panel-dev/appstore/blob/dev/apps/halo/2.26.1/data.yml)。插件与后台备份分别保存在 `./data`、`./backups`；数据库由 1Panel 管理。JWT 密钥以随机 64 字节的 hex 字符串生成，持久化到 `data/.jwt-secret` 并复用；备份和恢复 `data` 目录时务必保留此隐藏文件。
 
 ## 手动安装与更新
 
 通过 GitHub 的 **Code → Download ZIP** 下载，复制 `apps/voicehub` 到实际 1Panel 根目录的 `resource/apps/local/voicehub`，再刷新本地应用。替换已有目录前自行备份。
 
-重新运行 TUI 安装器只更新**模板**。若要更新已运行的 VoiceHub，先备份 PostgreSQL 数据库及应用安装目录，然后在 1Panel 执行拉取镜像并重建；没有该操作时，在应用的**实际安装目录**执行：
+重新运行 TUI 安装器只更新**模板**，不会改变已有安装的运行配置。旧安装迁移到新版配置并重建时，若没有 `data/.jwt-secret`，会生成新密钥，旧登录 token 失效，需重新登录；如需保留旧密钥，应在重建前将其保存到实际安装目录的 `data/.jwt-secret`。若要更新已运行的 VoiceHub，先备份 PostgreSQL 数据库及应用安装目录（保留 `data/.jwt-secret`），然后在 1Panel 执行拉取镜像并重建；没有该操作时，在应用的**实际安装目录**执行：
 
 ```bash
 docker compose pull voicehub && docker compose up -d --no-deps voicehub

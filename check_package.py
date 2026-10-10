@@ -36,7 +36,10 @@ assert not (APP / "latest" / "scripts").exists()
 logo = (APP / "logo.png").read_bytes()
 assert logo.startswith(b"\x89PNG\r\n\x1a\n") and len(logo) > 1000
 
-command_line = next(line.strip()[2:] for line in compose.splitlines() if line.strip().startswith('- "DATABASE_URL='))
+assert 'envKey: JWT_SECRET' not in form
+assert '${JWT_SECRET}' not in compose
+assert './config/jwt-secret.cjs:/app/1panel-jwt-secret.cjs:ro' in compose
+command_line = next(line.strip()[2:] for line in compose.splitlines() if line.strip().startswith('- "JWT_SECRET='))
 command = json.loads(command_line).replace("$$", "$")
 assert command.endswith("node scripts/deploy.js\nexec node .output/server/index.mjs\n")
 assert shutil.which("node") and shutil.which("sh"), "Install Node.js and Bash to run wrapper checks"
@@ -44,6 +47,7 @@ subprocess.run(["sh", "-n", "-c", command], check=True)
 
 with tempfile.TemporaryDirectory() as temp:
     root = Path(temp)
+    shutil.copyfile(APP / 'latest/config/jwt-secret.cjs', root / '1panel-jwt-secret.cjs')
     (root / "scripts").mkdir()
     (root / ".output" / "server").mkdir(parents=True)
     (root / "scripts" / "deploy.js").write_text(
@@ -52,7 +56,8 @@ with tempfile.TemporaryDirectory() as temp:
     (root / ".output" / "server" / "index.mjs").write_text(
         'console.log(JSON.stringify(process.env.DATABASE_URL));', encoding="utf-8"
     )
-    env = {**os.environ, "PANEL_DB_HOST": "1Panel-postgresql-test", "PANEL_DB_PORT": "5432", "PANEL_DB_NAME": "voicehub_test", "PANEL_DB_USER": "voicehub_user", "JWT_SECRET": "0123456789abcdef" * 4}
+    env = {**os.environ, "PANEL_DB_HOST": "1Panel-postgresql-test", "PANEL_DB_PORT": "5432", "PANEL_DB_NAME": "voicehub_test", "PANEL_DB_USER": "voicehub_user"}
+    env.pop('JWT_SECRET', None)
     for password in ("simple", "a%40b", "p@ss:word/#?% 中文", "quote'\"$`\\!", "line\nbreak"):
         env["PANEL_DB_USER_PASSWORD"] = password
         result = subprocess.run(["sh", "-ec", command], cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", check=True)
@@ -64,9 +69,19 @@ with tempfile.TemporaryDirectory() as temp:
         assert unquote(url.username) == env["PANEL_DB_USER"]
         assert unquote(url.password) == password
         assert unquote(url.path[1:]) == env["PANEL_DB_NAME"]
-        assert parse_qs(url.query) == {"sslmode": ["disable"]}
-    for change in ({"JWT_SECRET": "short"}, {"PANEL_DB_HOST": ""}, {"PANEL_DB_PORT": "invalid"}, {"FAIL_DEPLOY": "7"}):
+    assert parse_qs(url.query) == {"sslmode": ["disable"]}
+    secret = subprocess.run(["node", str(root / "1panel-jwt-secret.cjs")], cwd=root, capture_output=True, text=True, check=True).stdout
+    assert len(secret) == 128 and (root / ".data/.jwt-secret").is_file()
+    assert subprocess.run(["node", str(root / "1panel-jwt-secret.cjs")], cwd=root, capture_output=True, text=True, check=True).stdout == secret
+    with tempfile.TemporaryDirectory() as other:
+        independent = subprocess.run(["node", str(root / "1panel-jwt-secret.cjs")], cwd=other, capture_output=True, text=True, check=True).stdout
+        assert independent != secret
+    for change in ({"PANEL_DB_HOST": ""}, {"PANEL_DB_PORT": "invalid"}, {"FAIL_DEPLOY": "7"}):
         result = subprocess.run(["sh", "-ec", command], cwd=root, env={**env, **change}, capture_output=True, text=True, encoding="utf-8")
         assert result.returncode != 0, change
         assert '"postgresql://' not in result.stdout, "Server started after prerequisite failure"
-print("OK: one container, PostgreSQL selector, rolling pull, persistence, URL encoding, fail-fast startup")
+    (root / '.data/.jwt-secret').write_text('short', encoding='utf-8')
+    result = subprocess.run(['sh', '-ec', command], cwd=root, env=env, capture_output=True, text=True, encoding='utf-8')
+    assert result.returncode != 0 and not result.stdout
+    assert (root / '.data/.jwt-secret').read_text() == 'short'
+print("OK: auto JWT generation/reuse/isolation, invalid-secret rejection, URL encoding, fail-fast startup")

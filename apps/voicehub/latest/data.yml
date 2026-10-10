@@ -81,26 +81,6 @@ additionalProperties:
       random: true
       required: true
       type: password
-    - default: ""
-      envKey: JWT_SECRET
-      labelEn: "JWT Secret (32+ random characters)"
-      labelZh: "JWT 密钥（至少 32 位随机字符）"
-      required: true
-      type: password
-      description:
-        en: "Generate your own secret, for example with openssl rand -hex 32. Keep it unchanged during updates."
-        zh: "请用 openssl rand -hex 32 生成独立密钥；更新时不要更换。"
-      label:
-        en: "JWT Secret (32+ random characters)"
-        es-es: "JWT Secret (32+ random characters)"
-        ja: "JWT Secret (32+ random characters)"
-        ms: "JWT Secret (32+ random characters)"
-        pt-br: "JWT Secret (32+ random characters)"
-        ru: "JWT Secret (32+ random characters)"
-        ko: "JWT Secret (32+ random characters)"
-        zh-Hant: "JWT 密钥（至少 32 位随机字符）"
-        zh: "JWT 密钥（至少 32 位随机字符）"
-        tr: "JWT Secret (32+ random characters)"
     - default: 3000
       envKey: PANEL_APP_PORT_HTTP
       labelEn: Port

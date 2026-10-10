@@ -14,15 +14,9 @@
 
 1. 在 1Panel 应用商店安装 PostgreSQL（建议 15，与 VoiceHub 官方部署一致），确认它处于运行状态且加入 `1panel-network`。应用包不会创建第二个 PostgreSQL 容器，不支持 MySQL/MariaDB。
 2. 将压缩包里的 `apps/voicehub` 整个目录复制到服务器 `/opt/1panel/resource/apps/local/voicehub`。若 1Panel 使用了自定义根目录，应使用实际根目录下的 `resource/apps/local/voicehub`。已有同名应用目录时先备份，不要盲目覆盖。
-3. 在 1Panel 刷新“本地应用”，安装 VoiceHub，选择 `latest`。在“数据库服务”选择已安装的 PostgreSQL，填写/保留数据库名、用户及随机密码，填写 JWT 密钥。仅开放 Web 端口（默认 3000）。
+3. 在 1Panel 刷新“本地应用”，安装 VoiceHub，选择 `latest`。在“数据库服务”选择已安装的 PostgreSQL，填写/保留数据库名、用户及随机密码；JWT 密钥自动生成，无需填写，安装表单不再包含 `JWT_SECRET`。仅开放 Web 端口（默认 3000）。
 
-JWT 密钥可以在服务器终端生成：
-
-```bash
-openssl rand -hex 32
-```
-
-填入输出的 64 位字符串；每次安装独立生成，不与数据库密码共用。以后更新时保留原 JWT 密钥。
+首次启动时自动生成随机 64 字节的 hex JWT 密钥（128 个十六进制字符），保存到容器 `/app/.data/.jwt-secret`（实际安装目录的 `data/.jwt-secret`），以后启动和重建复用该文件。备份和恢复 `data` 目录时务必保留 `.jwt-secret` 隐藏文件；不要公开密钥内容。
 
 表单复用官方 Halo 的 `PANEL_DB_TYPE` → `PANEL_DB_HOST` 数据库绑定格式，只保留 PostgreSQL 选项。数据库/用户的创建由 1Panel 数据库绑定流程处理，本包没有建库 hook。若复用已有数据库，用户必须具有数据库/schema/相关对象的创建和修改权限；推荐用新数据库，不要连接含其他应用表的数据库。
 
@@ -35,7 +29,9 @@ openssl rand -hex 32
 - `latest` 是滚动通道，不是上游真实版本号；1Panel 不会因此产生新的应用版本条目。
 - 已运行容器不会实时自行更新。普通重启不保证更新，不含 Watchtower、自动更新任务或新数据库容器。
 
-更新前先在 1Panel 备份此应用的 PostgreSQL 数据库，并备份应用安装目录（含 `.env`、`data`、`backups`）。上游启动包含自动迁移，失败时可能回退到 `drizzle-kit push --force`；不要跳过备份。旧镜像回退不能自动撤销数据库迁移。
+更新前先在 1Panel 备份此应用的 PostgreSQL 数据库，并备份应用安装目录（含 `.env`、`config/jwt-secret.cjs`、`data`、`backups`，务必保留 `data/.jwt-secret` 隐藏文件）。上游启动包含自动迁移，失败时可能回退到 `drizzle-kit push --force`；不要跳过备份。旧镜像回退不能自动撤销数据库迁移。
+
+仅更新本地应用模板不会改变已有安装的运行配置。旧安装迁移到新版配置并重建时，若没有 `data/.jwt-secret`，会生成新密钥，旧登录 token 失效，需重新登录；如需沿用旧密钥，应在重建前将旧密钥保存到实际安装目录的 `data/.jwt-secret`，不要公开其内容。
 
 如 1Panel 当前版本没有明确的“拉取镜像并重建”操作，从应用详情找到**实际安装目录**（不是 `resource/apps/local` 包目录），打开该目录终端执行：
 
@@ -52,8 +48,9 @@ docker compose logs --tail=100 voicehub
 - 一个 VoiceHub 服务：官方镜像、官方 `node scripts/deploy.js` 与服务启动顺序。
 - 1Panel 标准容器名、外部网络、端口参数和 Apps 标签。
 - 通过所选 PostgreSQL 服务的 `PANEL_DB_HOST/PANEL_DB_PORT` 连接。不设置跨 Compose 的 `depends_on`；所选数据库应先运行。
+- 通过只读挂载 `config/jwt-secret.cjs:/app/1panel-jwt-secret.cjs:ro` 适配 1Panel 的自动密钥流程；Compose 启动命令调用该 helper，首次在 `/app/.data/.jwt-secret` 生成随机 64 字节 hex 密钥，之后持久化复用。未修改 VoiceHub 源码。
 - 一段 Compose 内启动命令对数据库用户名/密码进行 URI 编码，避免 `%`、`@`、`:` 等字符破坏连接；不修改 VoiceHub 源码。内网连接按官方 Compose 使用 `sslmode=disable`，不适用于公网外部数据库。
-- `./data:/app/.data` 持久化插件运行文件，`./backups:/app/backups` 持久化后台备份。应用以官方镜像的 root 用户运行，无额外权限 hook。
+- `./data:/app/.data` 持久化插件运行文件和 JWT 密钥，`./backups:/app/backups` 持久化后台备份。升级、迁移、备份和恢复时须保留实际安装目录中的 `data/.jwt-secret` 以及 `config/jwt-secret.cjs`；应用以官方镜像的 root 用户运行，无额外权限 hook。
 
 Redis、OAuth、WebAuthn 和域名等扩展选项未加入最小表单。包宣告 amd64/arm64（官方 latest 镜像提供这两个架构）；没有额外守护服务或生命周期脚本。
 

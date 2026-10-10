@@ -184,7 +184,7 @@ with ZipFile(archive) as z:
     files = z.infolist()
     if len(files) > 5000 or sum(f.file_size for f in files) > 50 * 1024 * 1024:
         sys.exit('压缩包解压体积过大。')
-    required = {'data.yml', 'logo.png', 'README.md', 'latest/data.yml', 'latest/docker-compose.yml'}
+    required = {'data.yml', 'logo.png', 'README.md', 'latest/data.yml', 'latest/docker-compose.yml', 'latest/config/jwt-secret.cjs'}
     found = set()
     roots = set()
     for entry in files:
@@ -226,4 +226,4 @@ if [ -d "$app_dir" ]; then
 fi
 mv "$stage/voicehub" "$app_dir" || fail '替换失败，将恢复旧目录。'
 committed=1
-ui_msg "完成。请在 1Panel 刷新本地应用并安装 VoiceHub / latest。\n\n目标：$app_dir\n备份：${backup:-无}\n\n选择已安装的 PostgreSQL，设置 JWT 密钥，首次登录后修改默认管理员密码。\n\n运行中的容器未修改。"
+ui_msg "完成。请在 1Panel 刷新本地应用并安装 VoiceHub / latest。\n\n目标：$app_dir\n备份：${backup:-无}\n\n选择已安装的 PostgreSQL；JWT 密钥自动生成，无需填写。备份 data 目录时保留隐藏文件 .jwt-secret，首次登录后修改默认管理员密码。\n\n运行中的容器未修改。"
