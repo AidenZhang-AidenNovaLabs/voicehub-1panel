@@ -27,9 +27,9 @@ RHEL / Rocky / AlmaLinux 可安装 `dialog python3 curl`。`whiptail/dialog` 是
 (f=$(mktemp) && trap 'rm -f "$f"' EXIT && curl --fail --silent --show-error --proto '=https' -o "$f" https://raw.githubusercontent.com/AidenZhang-AidenNovaLabs/voicehub-1panel/main/install.sh && sudo sh "$f")
 ```
 
-菜单提供“安装/更新本地应用模板”“检查依赖和目录”“退出”。脚本从 `1pctl` 的 `BASE_DIR` 检测本地应用目录；默认位于 `/opt/1panel/resource/apps/local/voicehub`。
+菜单提供“安装/更新本地应用模板”“检查依赖和目录”“仅删除本地应用模板”“退出”。删除选项只删除检测到的 `resource/apps/local/voicehub` 模板（默认 `/opt/1panel/resource/apps/local/voicehub`），不停止容器、不删数据库、不删实际运行数据，也不会删除旧备份目录。
 
-下载安装内容来自本仓库 main 分支。脚本先验证 HTTPS 主机与 DNS 公网地址，固定已验证 IP、不跟随重定向、不使用代理；检查 ZIP 路径与体积后再安装。现有应用模板目录会保留到 `.voicehub.backup.XXXXXX/voicehub`，取消或失败不覆盖旧目录。**脚本仅复制应用商店模板，不创建或更新运行容器，不修改数据库。**网络无法直连 GitHub 时可使用下方手动方式；不内置第三方代理。
+脚本从 `1pctl` 的 `BASE_DIR` 检测本地应用目录；默认位于 `/opt/1panel/resource/apps/local/voicehub`。脚本先验证 HTTPS 主机与 DNS 公网地址，固定已验证 IP、不跟随重定向、不使用代理；检查 ZIP 路径与体积后再安装。现有应用模板目录会保留到 `.voicehub.backup.XXXXXX/voicehub`，取消或失败不覆盖旧目录。**脚本仅复制应用商店模板，不创建或更新运行容器，不修改数据库。**网络无法直连 GitHub 时可使用下方手动方式；不内置第三方代理。
 
 ## 在 1Panel 安装应用
 

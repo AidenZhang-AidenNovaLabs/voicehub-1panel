@@ -29,19 +29,21 @@ ui_yesno() {
 ui_menu() {
     if [ -n "${tui:-}" ]; then
         "$tui" --title "$TITLE" --backtitle 'Linux 本地应用安装器 · 不操作运行中的容器' \
-            --menu '方向键选择，Tab 切换按钮，Enter 确认，Esc 退出。' 16 76 3 \
+            --menu '方向键选择，Tab 切换按钮，Enter 确认，Esc 退出。' 17 76 4 \
             install '安装 / 更新本地应用模板' \
             check '检查依赖和 1Panel 目录' \
+            delete '仅删除本地应用模板' \
             exit '退出' 3>&1 1>&2 2>&3
     else
         printf '\nVoiceHub · 1Panel Linux 安装器\n' >&2
-        printf '%s\n' '1) 安装 / 更新本地应用模板' '2) 检查依赖和 1Panel 目录' '3) 退出' >&2
-        printf '%s' '选择 [1-3]: ' >&2
+        printf '%s\n' '1) 安装 / 更新本地应用模板' '2) 检查依赖和 1Panel 目录' '3) 仅删除本地应用模板' '4) 退出' >&2
+        printf '%s' '选择 [1-4]: ' >&2
         read -r choice || return 1
         case "$choice" in
             1) printf '%s\n' install ;;
             2) printf '%s\n' check ;;
-            3) printf '%s\n' exit ;;
+            3) printf '%s\n' delete ;;
+            4) printf '%s\n' exit ;;
             *) return 1 ;;
         esac
     fi
@@ -89,13 +91,16 @@ else
 fi
 case "$choice" in
     exit|'') exit 0 ;;
-    install|check) : ;;
+    install|check|delete) : ;;
     *) fail '无效选项。' ;;
 esac
 
-for tool in python3 curl mktemp awk; do
+for tool in python3 mktemp awk; do
     command -v "$tool" >/dev/null 2>&1 || fail "缺少依赖：$tool。请安装后重试。"
 done
+if [ "$choice" != delete ]; then
+    command -v curl >/dev/null 2>&1 || fail '缺少依赖：curl。请安装后重试。'
+fi
 panelctl=$(command -v 1pctl 2>/dev/null) || fail '找不到 1pctl；请在安装了 1Panel 的服务器上运行。'
 [ -f "$panelctl" ] && [ -r "$panelctl" ] || fail '无法读取 1pctl。'
 base_dir=$(awk '/^[[:space:]]*BASE_DIR=/ {sub(/^[[:space:]]*BASE_DIR=/, ""); print; exit}' "$panelctl")
@@ -118,6 +123,39 @@ app_dir="$local_root/voicehub"
 if [ -e "$app_dir" ]; then
     [ -d "$app_dir" ] && [ -f "$app_dir/data.yml" ] || fail "目标不是已识别的应用目录：$app_dir"
 fi
+if [ "$choice" = delete ]; then
+    if [ ! -d "$app_dir" ]; then
+        ui_msg "未找到本地应用模板：\n$app_dir\n\n运行中的容器、数据库和备份目录未修改。"
+        exit 0
+    fi
+    if [ ! -f "$app_dir/data.yml" ] || [ -L "$app_dir" ]; then
+        fail "目标不是可识别的 VoiceHub 本地应用目录，已拒绝删除：$app_dir"
+    fi
+    if ui_yesno "仅删除本地应用模板？\n\n$app_dir\n\n不会停止容器，不会删除数据库，不会删除应用实际安装目录或运行数据。"; then
+        python3 - "$local_root" "$app_dir" <<'PY'
+from pathlib import Path
+import re
+import shutil
+import sys
+root, app = map(Path, sys.argv[1:])
+if app.is_symlink() or app.parent.resolve() != root.resolve() or app.name != 'voicehub':
+    sys.exit('目标不在本地应用模板目录，已拒绝删除。')
+metadata = app / 'data.yml'
+if not app.is_dir() or metadata.is_symlink() or not metadata.is_file():
+    sys.exit('目标不是可识别的本地应用模板，已拒绝删除。')
+if not re.search(r'^\s+key:\s*[\"\x27]?voicehub[\"\x27]?\s*$', metadata.read_text(encoding='utf-8'), re.M):
+    sys.exit('应用标识不是 voicehub，已拒绝删除。')
+if (app / '.env').exists():
+    sys.exit('目标含运行配置 .env，已拒绝删除；请核对路径。')
+shutil.rmtree(app)
+PY
+        ui_msg "本地应用模板已删除。\n\n运行中的容器、数据库和运行数据未修改。"
+    else
+        ui_msg '已取消，未删除任何文件。'
+    fi
+    exit 0
+fi
+
 if [ "$choice" = check ]; then
     ui_msg "依赖检查通过。
 
