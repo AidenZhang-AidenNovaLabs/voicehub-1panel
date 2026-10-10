@@ -21,13 +21,10 @@ sudo apt install whiptail python3 curl
 
 RHEL / Rocky / AlmaLinux 可安装 `dialog python3 curl`。`whiptail/dialog` 是可选项；没有时自动回退到数字文本菜单。也可用 `sudo env VOICEHUB_TEXT=1 sh install.sh` 强制文本模式。
 
-下载安装器并打开 TUI：
+一行下载安装器并打开 TUI：
 
 ```bash
-curl --fail --silent --show-error --proto '=https' \
-  -o install.sh \
-  https://raw.githubusercontent.com/AidenZhang-AidenNovaLabs/voicehub-1panel/main/install.sh
-sudo sh install.sh
+(f=$(mktemp) && trap 'rm -f "$f"' EXIT && curl --fail --silent --show-error --proto '=https' -o "$f" https://raw.githubusercontent.com/AidenZhang-AidenNovaLabs/voicehub-1panel/main/install.sh && sudo sh "$f")
 ```
 
 菜单提供“安装/更新本地应用模板”“检查依赖和目录”“退出”。脚本从 `1pctl` 的 `BASE_DIR` 检测本地应用目录；默认位于 `/opt/1panel/resource/apps/local/voicehub`。

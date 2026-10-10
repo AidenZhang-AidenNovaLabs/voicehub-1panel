@@ -1,5 +1,15 @@
 # VoiceHub · 1Panel 本地应用（滚动 latest）
 
+## Linux TUI 安装
+
+一行下载安装器并运行；临时文件会在退出后删除：
+
+```bash
+(f=$(mktemp) && trap 'rm -f "$f"' EXIT && curl --fail --silent --show-error --proto '=https' -o "$f" https://raw.githubusercontent.com/AidenZhang-AidenNovaLabs/voicehub-1panel/main/install.sh && sudo sh "$f")
+```
+
+没有 `whiptail`/`dialog` 时，安装器自动回退到普通文本菜单；也可设置 `VOICEHUB_TEXT=1` 强制文本模式。
+
 ## 安装
 
 1. 在 1Panel 应用商店安装 PostgreSQL（建议 15，与 VoiceHub 官方部署一致），确认它处于运行状态且加入 `1panel-network`。应用包不会创建第二个 PostgreSQL 容器，不支持 MySQL/MariaDB。
